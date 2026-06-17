@@ -11,6 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Registering our custom role middleware alias for Laravel 12 route protection
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);

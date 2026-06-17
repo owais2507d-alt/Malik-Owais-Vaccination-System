@@ -9,24 +9,27 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
+    /**
+     * Handle an incoming request and filter by specific user role.
+     */
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        // 1. Check if user is logged in
+        // 1. Check if the user is authenticated globally
         if (!Auth::check()) {
             return redirect()->route('login');
         }
 
         $user = Auth::user();
 
-        // 2. Check if the user has the required role
+        // 2. Validate if the authenticated user possesses the required clearance role
         if ($user->role !== $role) {
-            abort(403, 'Unauthorized action. You do not have access to this section.');
+            abort(403, 'Unauthorized action. Access denied to this medical portal section.');
         }
 
-        // 3. Special Guard: If Hospital is registered but still 'pending' approval by Admin
+        // 3. Security Check: If a hospital account status is still pending administrative approval
         if ($user->role === 'hospital' && $user->status === 'pending') {
             Auth::logout();
-            return redirect()->route('login')->with('error', 'Your hospital account is awaiting Admin Approval.');
+            return redirect()->route('login')->with('error', 'Your hospital profile registration is currently pending admin approval.');
         }
 
         return $next($request);
