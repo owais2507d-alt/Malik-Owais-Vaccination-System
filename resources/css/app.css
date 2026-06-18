@@ -5,7 +5,12 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+
+
+/* Defining Global System Theme Variables in Root */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+  --color-brand-primary: #0d9488;    /* Deep Medical Teal */
+  --color-brand-hover: #0f766e;      /* Darker Teal for interaction */
+  --color-brand-light: #f0fdfa;      /* Soft Light Teal background */
+  --color-bg-main: #f8fafc;          /* Slate Light background */
 }
