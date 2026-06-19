@@ -8,41 +8,51 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
-    public function showlogin(){
+    /**
+     * Show the standard universal user login form.
+     */
+    public function showlogin()
+    {
         return view('auth.login');
     }
 
-    public  function login(Request $request){
-        $credentials =$request->validate([
-           'email' => 'required|email',
+    /**
+     * Handle authentication attempts strictly for Patients and Hospitals (Web Guard).
+     */
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        if(Auth::attempt($credentials ,$request->filled('remember'))){
-            $user = Auth::user();
+        // Attempting login explicitly via default 'web' guard (users table)
+        if (Auth::guard('web')->attempt($credentials, $request->filled('remember'))) {
+            $user = Auth::guard('web')->user();
+
             // Strict Gatekeeping: Prevent pending hospital accounts from logging in
             if ($user->role === 'hospital' && $user->status === 'pending') {
-                Auth::logout();
+                Auth::guard('web')->logout();
                 return redirect()->back()->withErrors([
                     'email' => 'Your hospital account authorization is currently pending Admin Approval.'
                 ]);
             }
-            // Smart Redirection Matrix based on explicit user clearance roles
+
+            // Smart Redirection Matrix (Admin removed as it uses a separate guard/table now)
             return match ($user->role) {
-                'admin' => redirect()->intended(route('admin.dashboard')),
                 'hospital' => redirect()->intended(route('hospital.dashboard')),
-                'patient' => redirect()->intended(route('patient.dashboard')),
-                default => redirect('/'),
+                'patient'  => redirect()->intended(route('patient.dashboard')),
+                default    => redirect('/'),
             };
         }
+
         // Return error if authentication verification parameters fail
         return redirect()->back()->withErrors([
             'email' => 'The provided credentials do not match our database records.',
         ]);
+    }
 
-        }
-
-        /**
+    /**
      * Render the protected patient self-service dashboard with profile metadata.
      */
     public function patientDashboard()
@@ -53,15 +63,14 @@ class LoginController extends Controller
         return view('patient.dashboard', compact('user'));
     }
 
-        /**
-     * Terminate user session and flush security tokens.
+    /**
+     * Terminate standard user session and flush security tokens.
      */
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('login');
     }
-    }
-
+}

@@ -3,54 +3,78 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\AdminLoginController;
 
-// =========================================================================
-// PUBLIC GUEST ROUTES (Only Accessible If NOT Logged In)
-// =========================================================================
+/*
+|--------------------------------------------------------------------------
+| 1. PUBLIC LANDING & AUTH SYSTEM (Users / Patients / Hospitals)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', function () {
+    return redirect()->route('login');
+});
+
+// Guest Only Routes for Standard Users
 Route::middleware('guest')->group(function () {
-    
-    // Root landing redirects to login for application flow
-    Route::get('/', function () {
-        return redirect()->route('login');
-    });
-
-    // Patient Registration Processes
+    // Patient Onboarding Form
     Route::get('/register', [RegisterController::class, 'ShowRegisterForm'])->name('register');
     Route::post('/register', [RegisterController::class, 'register']);
 
-    // Universal Login Portal Processes
+    // Universal Login Portal (For Patients & Approved Hospitals)
     Route::get('/login', [LoginController::class, 'showlogin'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
 });
 
-// Universal Secure Logout Route
+// Universal Secure Logout for Standard Users
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
 
-// =========================================================================
-// SECURE ZONE: ADMIN ROUTES 
-// =========================================================================
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| 2. ISOLATED ADMIN AUTHENTICATION (Using Separate Admin Guard & Table)
+|--------------------------------------------------------------------------
+*/
+// Explicitly isolated from any global guest/auth middleware to block loops
+Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminLoginController::class, 'login']);
+Route::post('/admin/logout', [AdminLoginController::class, 'logout'])->name('admin.logout');
+
+
+/*
+|--------------------------------------------------------------------------
+| 3. SECURE WORKSPACES (Protected Zones)
+|--------------------------------------------------------------------------
+*/
+
+// --- ADMIN PANEL ZONE ---
+Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', function() { 
-        return '<h1>Welcome to Admin Central Control Dashboard</h1>'; 
+        return view('admin.dashboard'); 
     })->name('dashboard');
 });
 
+// --- PATIENT PANEL ZONE ---
+Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')->group(function () {
+    Route::get('/dashboard', [LoginController::class, 'patientDashboard'])->name('dashboard');
+});
 
-// =========================================================================
-// SECURE ZONE: HOSPITAL ROUTES
-// =========================================================================
+// --- HOSPITAL PANEL ZONE ---
 Route::middleware(['auth', 'role:hospital'])->prefix('hospital')->name('hospital.')->group(function () {
     Route::get('/dashboard', function() { 
         return '<h1>Welcome to Hospital Management Portal</h1>'; 
     })->name('dashboard');
 });
 
+use App\Http\Controllers\Auth\ResetPasswordController;
 
-// =========================================================================
-// SECURE ZONE: PATIENT ROUTES
-// =========================================================================
-Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')->group(function () {
-    // Mapping dashboard to a dedicated Patient Controller
-    Route::get('/dashboard', [LoginController::class, 'patientDashboard'])->name('dashboard');
+// --- PASSWORD RESET SYSTEM ROUTES (GUEST) ---
+Route::middleware('guest')->group(function () {
+    // 1. Forgot Password Form View
+    Route::get('/forgot-password', [ResetPasswordController::class, 'showForgotForm'])->name('password.request');
+    // 2. Submit Forgot Password Form (Sends Email)
+    Route::post('/forgot-password', [ResetPasswordController::class, 'sendResetLink'])->name('password.email');
+    // 3. Reset Password Link Form (From Email Click)
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+    // 4. Update Password in Database
+    Route::post('/reset-password', [ResetPasswordController::class, 'updatePassword'])->name('password.update');
 });

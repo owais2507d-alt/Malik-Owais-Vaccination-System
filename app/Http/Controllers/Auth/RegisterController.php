@@ -1,7 +1,5 @@
 <?php
 
-
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -12,15 +10,21 @@ use Illuminate\Support\Facades\Auth;
 
 class RegisterController extends Controller
 {
-    //// shoe registration form
-    public function ShowRegisterForm(){
+    /**
+     * Show the patient registration form.
+     */
+    public function ShowRegisterForm()
+    {
         return view('auth.register');
     }
 
-    //// handle registration request for a new patient 
-    public function register(Request $request){
+    /**
+     * Handle registration request strictly for a new patient.
+     */
+    public function register(Request $request)
+    {
         $request->validate([
-           'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'required|string|max:20',
@@ -28,25 +32,26 @@ class RegisterController extends Controller
             'address' => 'required|string',
         ]);
 
-        ///create base  record  in database ::
-     $user = User::create([
+        // 1. Create base record in standard users table as patient
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'patient', // Enforced role restriction
-            'status' => 'approved', // Patients are approved by default
+            'role' => 'patient',       // Enforced role restriction for normal system users
+            'status' => 'approved',   // Patients are active by default
         ]);
+
         // 2. Automatically provision the linked patient profile container
         $user->patientProfile()->create([
             'phone' => $request->phone,
             'location' => $request->location,
             'address' => $request->address,
         ]);
-        // Log the patient in automatically after registration
-        Auth::login($user);
 
-        // Redirect to their protected dashboard area
+        // 3. Log the patient in automatically using default web guard
+        Auth::guard('web')->login($user);
+
+        // 4. Redirect strictly to their protected patient dashboard area
         return redirect()->route('patient.dashboard');
     }
-
 }
