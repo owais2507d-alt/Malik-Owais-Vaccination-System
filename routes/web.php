@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Auth\AdminLoginController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,21 +13,35 @@ use App\Http\Controllers\Auth\AdminLoginController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
-
-// Guest Only Routes for Standard Users
+// =========================================================================
+// PUBLIC GUEST ROUTES (Only Accessible If NOT Logged In)
+// =========================================================================
 Route::middleware('guest')->group(function () {
-    // Patient Onboarding Form
+
+    // Root landing redirects to login for application flow
+    Route::get('/', function () {
+        return redirect()->route('login');
+    });
+
+    // Patient Registration Processes
     Route::get('/register', [RegisterController::class, 'ShowRegisterForm'])->name('register');
     Route::post('/register', [RegisterController::class, 'register']);
 
-    // Universal Login Portal (For Patients & Approved Hospitals)
+    // OTP Input Form Display Screen View
+    Route::get('/register/verify-otp', [RegisterController::class, 'showOtpForm'])->name('register.otp.view');
+    // Process OTP Token Submission Match Engine
+    Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify.otp');
+
+    // Universal Login Portal Processes
     Route::get('/login', [LoginController::class, 'showlogin'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
+
+    // Trigger Resend New OTP Process Engine via Google Mail
+    Route::get('/register/resend-otp', [RegisterController::class, 'resendOtp'])->name('register.resend.otp');
 });
 
 // Universal Secure Logout for Standard Users
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +53,6 @@ Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name
 Route::post('/admin/login', [AdminLoginController::class, 'login']);
 Route::post('/admin/logout', [AdminLoginController::class, 'logout'])->name('admin.logout');
 
-
 /*
 |--------------------------------------------------------------------------
 | 3. SECURE WORKSPACES (Protected Zones)
@@ -48,8 +61,8 @@ Route::post('/admin/logout', [AdminLoginController::class, 'logout'])->name('adm
 
 // --- ADMIN PANEL ZONE ---
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', function() { 
-        return view('admin.dashboard'); 
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
     })->name('dashboard');
 });
 
@@ -60,8 +73,8 @@ Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')
 
 // --- HOSPITAL PANEL ZONE ---
 Route::middleware(['auth', 'role:hospital'])->prefix('hospital')->name('hospital.')->group(function () {
-    Route::get('/dashboard', function() { 
-        return '<h1>Welcome to Hospital Management Portal</h1>'; 
+    Route::get('/dashboard', function () {
+        return '<h1>Welcome to Hospital Management Portal</h1>';
     })->name('dashboard');
 });
 
